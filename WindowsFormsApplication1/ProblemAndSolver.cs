@@ -370,6 +370,37 @@ namespace TSP
             return results;
         }
 
+        //gets BSSF using random cycle
+        private void defaultGetBSSF()
+        {
+            int i, swap, temp, count = 0;
+            int[] perm = new int[Cities.Length];
+            Route = new ArrayList();
+            Random rnd = new Random();
+
+            do
+            {
+                for (i = 0; i < perm.Length; i++)                                 // create a random permutation template
+                    perm[i] = i;
+                for (i = 0; i < perm.Length; i++)
+                {
+                    swap = i;
+                    while (swap == i)
+                        swap = rnd.Next(0, Cities.Length);
+                    temp = perm[i];
+                    perm[i] = perm[swap];
+                    perm[swap] = temp;
+                }
+                Route.Clear();
+                for (i = 0; i < Cities.Length; i++)                            // Now build the route using the random permutation 
+                {
+                    Route.Add(Cities[perm[i]]);
+                }
+                bssf = new TSPSolution(Route);
+                count++;
+            } while (costOfBssf() == double.PositiveInfinity);                // until a valid route is found
+        }
+
         /// <summary>
         /// performs a Branch and Bound search of the state space of partial tours
         /// stops when time limit expires and uses BSSF as solution
@@ -379,8 +410,11 @@ namespace TSP
         {
             string[] results = new string[3];
 
-            int[,] graphMatrix = buildGraphMatrix();
+            double[,] graphMatrix = buildGraphMatrix();
+            defaultGetBSSF(); //replace with greedy or however you want to initialize BSSF
+            double cost = costOfBssf();
 
+            //YOU ARE HERE. Step 3 on your notes for this
 
             results[COST] = "not implemented";    // load results into array here, replacing these dummy values
             results[TIME] = "-1";
@@ -389,9 +423,22 @@ namespace TSP
             return results;
         }
 
-        private int[,] buildGraphMatrix()
+        private double[,] buildGraphMatrix()
         {
+            int length = Cities.Length;
+            double[,] matrix = new double[length,length];
+            //i is index of city of departure 
+            for (int i = 0; i < length; i++)
+            {
+                //j is index of destination city
+                for (int j = 0; j < length; j++)
+                {
+                    //i modified the city cost f(x) to put inifinity on the diagonals
+                    matrix[i, j] = Cities[i].costToGetTo(Cities[j]);
+                }
+            }
 
+            return matrix;
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////
