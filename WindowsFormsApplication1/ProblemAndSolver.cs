@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
 using System.Diagnostics;
+using System.Linq;
 
 
 namespace TSP
@@ -21,16 +22,19 @@ namespace TSP
             /// You are, of course, free to use a different representation if it would be more convenient or efficient 
             /// for your data structure(s) and search algorithm. 
             /// </summary>
-            public ArrayList
+            public List<int>
                 Route;
+
+            private City[] Cities;
 
             /// <summary>
             /// constructor
             /// </summary>
             /// <param name="iroute">a (hopefully) valid tour</param>
-            public TSPSolution(ArrayList iroute)
+            public TSPSolution(List<int> iroute, City[] cities)
             {
-                Route = new ArrayList(iroute);
+                Route = new List<int>(iroute);
+                this.Cities = cities;
             }
 
             /// <summary>
@@ -44,17 +48,20 @@ namespace TSP
                 // go through each edge in the route and add up the cost. 
                 int x;
                 City here;
+                City there;
                 double cost = 0D;
 
                 for (x = 0; x < Route.Count - 1; x++)
                 {
-                    here = Route[x] as City;
-                    cost += here.costToGetTo(Route[x + 1] as City);
+                    here = Cities[Route[x]];
+                    there = Cities[Route[x + 1]];
+                    cost += here.costToGetTo(there);
                 }
 
                 // go from the last city to the first. 
-                here = Route[Route.Count - 1] as City;
-                cost += here.costToGetTo(Route[0] as City);
+                here = Cities[Route.Last()];
+                there = Cities[Route.First()];
+                cost += here.costToGetTo(there);
                 return cost;
             }
         }
@@ -91,7 +98,7 @@ namespace TSP
         /// <summary>
         /// a route through the current problem, useful as a temporary variable. 
         /// </summary>
-        private ArrayList Route;
+        private List<int> Route;
         /// <summary>
         /// best solution so far. 
         /// </summary>
@@ -202,7 +209,7 @@ namespace TSP
         {
 
             Cities = new City[_size];
-            Route = new ArrayList(_size);
+            Route = new List<int>(_size);
             bssf = null;
 
             if (_mode == HardMode.Modes.Easy)
@@ -285,13 +292,13 @@ namespace TSP
                 // make a list of points. 
                 Point[] ps = new Point[bssf.Route.Count];
                 int index = 0;
-                foreach (City c in bssf.Route)
+                foreach (int c in bssf.Route)
                 {
                     if (index < bssf.Route.Count -1)
-                        g.DrawString(" " + index +"("+c.costToGetTo(bssf.Route[index+1]as City)+")", labelFont, cityBrushStartStyle, new PointF((float)c.X * width + 3F, (float)c.Y * height));
+                        g.DrawString(" " + index +"("+Cities[c].costToGetTo(Cities[bssf.Route[index+1]])+")", labelFont, cityBrushStartStyle, new PointF((float)Cities[c].X * width + 3F, (float)Cities[c].Y * height));
                     else 
-                        g.DrawString(" " + index +"("+c.costToGetTo(bssf.Route[0]as City)+")", labelFont, cityBrushStartStyle, new PointF((float)c.X * width + 3F, (float)c.Y * height));
-                    ps[index++] = new Point((int)(c.X * width) + CITY_ICON_SIZE / 2, (int)(c.Y * height) + CITY_ICON_SIZE / 2);
+                        g.DrawString(" " + index +"("+ Cities[c].costToGetTo(Cities[bssf.Route[0]])+")", labelFont, cityBrushStartStyle, new PointF((float)Cities[c].X * width + 3F, (float)Cities[c].Y * height));
+                    ps[index++] = new Point((int)(Cities[c].X * width) + CITY_ICON_SIZE / 2, (int)(Cities[c].Y * height) + CITY_ICON_SIZE / 2);
                 }
 
                 if (ps.Length > 0)
@@ -334,7 +341,7 @@ namespace TSP
             int i, swap, temp, count=0;
             string[] results = new string[3];
             int[] perm = new int[Cities.Length];
-            Route = new ArrayList();
+            Route = new List<int>();
             Random rnd = new Random();
             Stopwatch timer = new Stopwatch();
 
@@ -356,9 +363,9 @@ namespace TSP
                 Route.Clear();
                 for (i = 0; i < Cities.Length; i++)                            // Now build the route using the random permutation 
                 {
-                    Route.Add(Cities[perm[i]]);
+                    Route.Add(perm[i]);
                 }
-                bssf = new TSPSolution(Route);
+                bssf = new TSPSolution(Route, Cities);
                 count++;
             } while (costOfBssf() == double.PositiveInfinity);                // until a valid route is found
             timer.Stop();
@@ -375,7 +382,7 @@ namespace TSP
         {
             int i, swap, temp, count = 0;
             int[] perm = new int[Cities.Length];
-            Route = new ArrayList();
+            Route = new List<int>();
             Random rnd = new Random();
 
             do
@@ -394,9 +401,9 @@ namespace TSP
                 Route.Clear();
                 for (i = 0; i < Cities.Length; i++)                            // Now build the route using the random permutation 
                 {
-                    Route.Add(Cities[perm[i]]);
+                    Route.Add(perm[i]);
                 }
-                bssf = new TSPSolution(Route);
+                bssf = new TSPSolution(Route, Cities);
                 count++;
             } while (costOfBssf() == double.PositiveInfinity);                // until a valid route is found
         }
@@ -410,20 +417,58 @@ namespace TSP
         {
             string[] results = new string[3];
 
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
+
             double[,] graphMatrix = buildGraphMatrix();
             defaultGetBSSF(); //replace with greedy or however you want to initialize BSSF
-            double cost = costOfBssf();
-            //YOU ARE HERE. Step 3 on your notes for this
-            SearchSpace root = new SearchSpace(new List<int>(), 0, graphMatrix, 0, _size);
-            SearchSpace city0ToCity1 = new SearchSpace(root, 1);
+            //build cityIndices list. Stupid but need it
+            List<int> cityIndices = new List<int>(_size);
+            for (int i = 0; i < _size; i++)
+            {
+                cityIndices.Add(i);
+            }
 
+            PriorityQ q = new PriorityQ();
+            q.Makequeue();
+            SearchSpace root = new SearchSpace(new List<int>(), cityIndices, 0, graphMatrix, 0, _size);
+            q.Insert(root);
 
+            while(q.NotEmpty())
+            {
+                SearchSpace curr = q.Deletemin();
+                if(curr.Bound < costOfBssf())
+                    explore(curr, q);
+            }
 
-            results[COST] = "not implemented";    // load results into array here, replacing these dummy values
-            results[TIME] = "-1";
+            timer.Stop();
+            results[COST] = costOfBssf().ToString();                          // load results array
+            results[TIME] = timer.Elapsed.ToString();
             results[COUNT] = "-1";
 
             return results;
+        }
+        
+        private void explore(SearchSpace current, PriorityQ q)
+        {
+            List<int> citiesRemaining = current.CitiesRemaining;
+            bool leaf = true;
+            foreach (int city in citiesRemaining)
+            {
+                leaf = false;
+                SearchSpace child = new SearchSpace(current, city);
+                if (child.Bound < costOfBssf())
+                    q.Insert(child);
+            }
+
+            if(leaf)
+            {
+                TSPSolution possibleSoln = new TSPSolution(current.Route, Cities);
+                if (possibleSoln.costOfRoute() < costOfBssf())
+                {
+                    bssf = possibleSoln;
+                }
+            }
         }
 
         private double[,] buildGraphMatrix()

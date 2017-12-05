@@ -9,19 +9,22 @@ namespace TSP
     class SearchSpace
     {
         private List<int> currRoute; //array of city indices
+        private List<int> citiesRemaining;
         private double lowerBound; //best possible solution from this space
-        private int depthRemaining; //supposedly, this = total edges in graph - edges in currRoute
-                                    //Suggested we make priority a combo of this and lowerBound
         private double[,] costMatrix;
         private int size;
 
         //Need this for the very first searchSpace created. 
         //costMatrix passed in to the first one will be the unreduced graph matrix
-        public SearchSpace(List<int> prevRoute, double prevLB, double[,] prevMatrix, int cityVisiting, int size)
+        public SearchSpace(List<int> prevRoute, List<int> prevCitiesRemaining, double prevLB, double[,] prevMatrix, int cityVisiting, int size)
         {
-            //deep copy of prevRoute
+            //deep copy of prevRoute. Note that cityVisiting is added in visitCity f(x)
             currRoute = new List<int>(prevRoute.Count + 1);
             currRoute.AddRange(prevRoute);
+
+            //deep copy of prevCitiesRemaining. Note that cityVisiting is removed in visitCity f(x)
+            citiesRemaining = new List<int>(prevCitiesRemaining.Count);
+            citiesRemaining.AddRange(prevCitiesRemaining);
 
             this.size = size;
             this.lowerBound = prevLB;
@@ -29,11 +32,10 @@ namespace TSP
             reduceMatrix(prevMatrix, cityVisiting);
         }
 
-        public SearchSpace(SearchSpace prevSS, int cityVisiting) : this(prevSS.Route, prevSS.Bound, prevSS.Matrix, cityVisiting, prevSS.size)
+        public SearchSpace(SearchSpace prevSS, int cityVisiting) : this(prevSS.Route, prevSS.citiesRemaining, prevSS.Bound, prevSS.Matrix, cityVisiting, prevSS.size)
         { }
 
         //Reduces the given matrix and sets the lowerbound
-        //if cityVisiting == 0, then it's assumed you are starting the tour
         private void reduceMatrix(double[,] prevMatrix, int cityVisiting)
         {
             //perform deep copy of prevMatrix before editing
@@ -84,15 +86,12 @@ namespace TSP
                     }
                 }
             }
-            
-            //stub - eventually want to update depthRemaining
-            depthRemaining = 0;
         }
-
-        //
+        
         private void visitCity(int cityVisiting)
         {
             int cityFrom;
+            citiesRemaining.Remove(cityVisiting);
 
             try
             {
@@ -139,6 +138,16 @@ namespace TSP
         public double Bound
         {
             get { return lowerBound; }
+        }
+
+        public List<int> CitiesRemaining
+        {
+            get { return citiesRemaining; }
+        }
+
+        public int DepthRemaining
+        {
+            get { return citiesRemaining.Count; }
         }
     }
 
