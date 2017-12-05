@@ -17,74 +17,113 @@ namespace TSP
 
         //Need this for the very first searchSpace created. 
         //costMatrix passed in to the first one will be the unreduced graph matrix
-        public SearchSpace(List<int> prevRoute, double lb, double[,] prevMatrix, int cityVisiting, int size)
+        public SearchSpace(List<int> prevRoute, double prevLB, double[,] prevMatrix, int cityVisiting, int size)
         {
             //deep copy of prevRoute
             currRoute = new List<int>(prevRoute.Count + 1);
             currRoute.AddRange(prevRoute);
-            currRoute.Add(cityVisiting);
-            this.size = size;
 
-            reduceMatrix(lb, prevMatrix, cityVisiting);
+            this.size = size;
+            this.lowerBound = prevLB;
+
+            reduceMatrix(prevMatrix, cityVisiting);
         }
 
         public SearchSpace(SearchSpace prevSS, int cityVisiting) : this(prevSS.Route, prevSS.Bound, prevSS.Matrix, cityVisiting, prevSS.size)
         { }
 
         //Reduces the given matrix and sets the lowerbound
-        private void reduceMatrix(double prevLB, double[,] prevMatrix, int cityVisiting)
+        //if cityVisiting == 0, then it's assumed you are starting the tour
+        private void reduceMatrix(double[,] prevMatrix, int cityVisiting)
         {
             //perform deep copy of prevMatrix before editing
             costMatrix = new double[prevMatrix.GetLength(0), prevMatrix.GetLength(1)]; //getLength(n) returns length of nth dimension
             Array.Copy(prevMatrix, costMatrix, prevMatrix.Length);
             
+            visitCity(cityVisiting);
+
             double[] rowMin = new double[size];
             double[] colMin = new double[size];
             //reduce rows and find minimum in columns
-            for (int i = 0; i < size; i++)
+            for (int r = 0; r < size; r++)
             {
-                rowMin[i] = double.PositiveInfinity;
+                rowMin[r] = double.PositiveInfinity;
                 //get rowMin[i]
-                for (int j = 0; j < size; j++)
+                for (int c = 0; c < size; c++)
                 {
-                    if (costMatrix[i, j] < rowMin[i])
-                        rowMin[i] = costMatrix[i, j];
+                    if (costMatrix[r, c] < rowMin[r])
+                        rowMin[r] = costMatrix[r, c];
                 }
                 //subtract rowMin from row (if rowMin isn't infinity or 0). Also get colMin[j]
-                for (int j = 0; j < size; j++)
+                for (int c = 0; c < size; c++)
                 {
-                    if (!double.IsPositiveInfinity(rowMin[i]) && !(rowMin[i] == 0))
+                    if (!double.IsPositiveInfinity(rowMin[r]) && !(rowMin[r] == 0))
                     {
-                        costMatrix[i, j] -= rowMin[i];
-                        if (j == 0) //only do this on the first run, or else you add 5*rowMin[i] to the LB
-                            lowerBound += rowMin[i];
+                        costMatrix[r, c] -= rowMin[r];
+                        if (c == 0) //only do this on the first run, or else you add 5*rowMin[i] to the LB
+                            lowerBound += rowMin[r];
                     }
-                    if (i == 0) //initialize colMin[j] to infinity on first pass
-                        colMin[j] = double.PositiveInfinity;
-                    if (costMatrix[i, j] < colMin[j])
-                        colMin[j] = costMatrix[i, j];
+                    if (r == 0) //initialize colMin[j] to infinity on first pass
+                        colMin[c] = double.PositiveInfinity;
+                    if (costMatrix[r, c] < colMin[c])
+                        colMin[c] = costMatrix[r, c];
                 }
             }
 
             //reduce columns if necessary
-            for (int j = 0; j < size; j++)
+            for (int c = 0; c < size; c++)
             {
-                if (!double.IsPositiveInfinity(colMin[j]) && !(colMin[j] == 0))
+                if (!double.IsPositiveInfinity(colMin[c]) && !(colMin[c] == 0))
                 {
-                    lowerBound += colMin[j];
-                    for (int i = 0; i < size; i++)
+                    lowerBound += colMin[c];
+                    for (int r = 0; r < size; r++)
                     {
                         {
-                            costMatrix[i, j] -= colMin[j];
+                            costMatrix[r, c] -= colMin[c];
                         }
                     }
                 }
             }
             
-            //stub
+            //stub - eventually want to update depthRemaining
             depthRemaining = 0;
         }
 
+        //
+        private void visitCity(int cityVisiting)
+        {
+            int cityFrom;
+
+            try
+            {
+                cityFrom = currRoute.Last();
+            }
+            catch (InvalidOperationException) //currRoute had nothing in it, you can skip this f(x) but still need cityVisiting in currRoute
+            {
+                return;
+            }
+            finally
+            {
+                currRoute.Add(cityVisiting);
+            }
+
+            lowerBound += costMatrix[cityFrom, cityVisiting];
+
+            //infinity out the row for the city you're coming from
+            for (int c = 0; c < size; c++)
+            {
+                costMatrix[cityFrom, c] = double.PositiveInfinity;
+            }
+
+            //infinity out the column for the city you're visiting
+            for (int r = 0; r < size; r++)
+            {
+                costMatrix[r, cityVisiting] = double.PositiveInfinity;
+            }
+
+            //infinity out the symmetrical cell (as if visiting "cityFrom" from "cityVisiting")
+            costMatrix[cityVisiting, cityFrom] = double.PositiveInfinity;
+        }
 
         // These are C# accessor functions. Make get/set easier
         public List<int> Route

@@ -415,6 +415,7 @@ namespace TSP
             double cost = costOfBssf();
             //YOU ARE HERE. Step 3 on your notes for this
             SearchSpace root = new SearchSpace(new List<int>(), 0, graphMatrix, 0, _size);
+            SearchSpace city0ToCity1 = new SearchSpace(root, 1);
 
 
 
