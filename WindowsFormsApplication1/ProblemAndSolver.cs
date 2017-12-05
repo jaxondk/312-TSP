@@ -416,41 +416,40 @@ namespace TSP
         public string[] bBSolveProblem()
         {
             string[] results = new string[3];
+            int solutionsConsidered = 0;
 
             Stopwatch timer = new Stopwatch();
             timer.Start();
 
             double[,] graphMatrix = buildGraphMatrix();
             defaultGetBSSF(); //replace with greedy or however you want to initialize BSSF
+
             //build cityIndices list. Stupid but need it
-            List<int> cityIndices = new List<int>(_size);
-            for (int i = 0; i < _size; i++)
-            {
-                cityIndices.Add(i);
-            }
+            List<int> cityIndices = initCityIndices();
 
             PriorityQ q = new PriorityQ();
             q.Makequeue();
-            SearchSpace root = new SearchSpace(new List<int>(), cityIndices, 0, graphMatrix, 0, _size);
-            q.Insert(root);
+            q.Insert(new SearchSpace(new List<int>(), cityIndices, 0, graphMatrix, 0, _size));
 
-            while(q.NotEmpty())
+            while(q.NotEmpty() && timer.ElapsedMilliseconds < 60 * 1000)
             {
                 SearchSpace curr = q.Deletemin();
                 if(curr.Bound < costOfBssf())
-                    explore(curr, q);
+                    solutionsConsidered += explore(curr, q);
             }
 
             timer.Stop();
             results[COST] = costOfBssf().ToString();                          // load results array
             results[TIME] = timer.Elapsed.ToString();
-            results[COUNT] = "-1";
+            results[COUNT] = solutionsConsidered.ToString();
 
             return results;
         }
         
-        private void explore(SearchSpace current, PriorityQ q)
+        //returns number of leaves reached during the exploration
+        private int explore(SearchSpace current, PriorityQ q)
         {
+            int leavesFound = 0;
             List<int> citiesRemaining = current.CitiesRemaining;
             bool leaf = true;
             foreach (int city in citiesRemaining)
@@ -463,12 +462,15 @@ namespace TSP
 
             if(leaf)
             {
+                leavesFound++;
                 TSPSolution possibleSoln = new TSPSolution(current.Route, Cities);
                 if (possibleSoln.costOfRoute() < costOfBssf())
                 {
                     bssf = possibleSoln;
                 }
             }
+
+            return leavesFound;
         }
 
         private double[,] buildGraphMatrix()
@@ -488,6 +490,17 @@ namespace TSP
             return matrix;
         }
 
+        private List<int> initCityIndices()
+        {
+            List<int> indices = new List<int>(_size);
+            for (int i = 0; i < _size; i++)
+            {
+                indices.Add(i);
+            }
+
+            return indices;
+        }
+
         /////////////////////////////////////////////////////////////////////////////////////////////
         // These additional solver methods will be implemented as part of the group project.
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -499,14 +512,70 @@ namespace TSP
         public string[] greedySolveProblem()
         {
             string[] results = new string[3];
+            int solutionsConsidered = 0;
+            Stopwatch timer = new Stopwatch();
 
-            // TODO: Add your implementation for a greedy solver here.
+            timer.Start();
+            solutionsConsidered = greedyCalcBSSF();
+            timer.Stop();
 
-            results[COST] = "not implemented";    // load results into array here, replacing these dummy values
-            results[TIME] = "-1";
-            results[COUNT] = "-1";
+            results[COST] = costOfBssf().ToString();                          // load results array
+            results[TIME] = timer.Elapsed.ToString();
+            results[COUNT] = solutionsConsidered.ToString();
 
             return results;
+        }
+
+        //returns number of solutions considered
+        private int greedyCalcBSSF()
+        {
+            defaultGetBSSF();
+            //for each starting city:
+            //Route.add(startingCityIndex)
+            //for cities remaining
+            //get the smallest outgoing edge and add that to route
+            //remove it from cities remaining
+            //if this route's cost is < costBSSF
+            //bssf = this route's soln
+
+            int solutionsConsidered = 0;
+
+            for (int i = 0; i < _size; i++)
+            {
+                Route.Add(i);
+                List<int> citiesRemaining = initCityIndices();
+                citiesRemaining.Remove(i);
+
+                //build greedy route for starting city Cities[i]
+                while (citiesRemaining.Count > 0)
+                {
+                    //get closest edge
+                    int minCity = citiesRemaining[0];
+                    double minCost = Cities[Route.Last()].costToGetTo(Cities[minCity]);
+                    for (int c = 1; c < citiesRemaining.Count; c++)
+                    {
+                        double costToC = Cities[Route.Last()].costToGetTo(Cities[c]);
+                        if (costToC < minCost)
+                        {
+                            minCity = c;
+                            minCost = costToC;
+                        }
+                    }
+                    //add closest edge to route and remove from remaining cities
+                    Route.Add(minCity);
+                    citiesRemaining.Remove(minCity);
+                }
+
+                //keep if it's better than BSSF
+                TSPSolution candidate = new TSPSolution(Route, Cities);
+                if (candidate.costOfRoute() < costOfBssf())
+                {
+                    bssf = candidate;
+                    solutionsConsidered++;
+                }
+            }
+
+            return solutionsConsidered;
         }
 
         public string[] fancySolveProblem()
