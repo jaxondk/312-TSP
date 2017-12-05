@@ -413,8 +413,10 @@ namespace TSP
             double[,] graphMatrix = buildGraphMatrix();
             defaultGetBSSF(); //replace with greedy or however you want to initialize BSSF
             double cost = costOfBssf();
-
             //YOU ARE HERE. Step 3 on your notes for this
+            SearchSpace root = new SearchSpace(new List<int>(), 0, graphMatrix, 0, _size);
+
+
 
             results[COST] = "not implemented";    // load results into array here, replacing these dummy values
             results[TIME] = "-1";
@@ -425,13 +427,12 @@ namespace TSP
 
         private double[,] buildGraphMatrix()
         {
-            int length = Cities.Length;
-            double[,] matrix = new double[length,length];
+            double[,] matrix = new double[_size,_size];
             //i is index of city of departure 
-            for (int i = 0; i < length; i++)
+            for (int i = 0; i < _size; i++)
             {
                 //j is index of destination city
-                for (int j = 0; j < length; j++)
+                for (int j = 0; j < _size; j++)
                 {
                     //i modified the city cost f(x) to put inifinity on the diagonals
                     matrix[i, j] = Cities[i].costToGetTo(Cities[j]);
