@@ -102,7 +102,12 @@ namespace TSP
         /// <summary>
         /// best solution so far. 
         /// </summary>
-        private TSPSolution bssf; 
+        private TSPSolution bssf;
+
+        private int statesStoredMax = 0;
+        private int solutionsFound = 0;
+        private int statesCreated = 0;
+        private int statesPruned = 0;
 
         /// <summary>
         /// how to color various things. 
@@ -416,7 +421,6 @@ namespace TSP
         public string[] bBSolveProblem()
         {
             string[] results = new string[3];
-            int solutionsConsidered = 0;
 
             Stopwatch timer = new Stopwatch();
             timer.Start();
@@ -427,50 +431,60 @@ namespace TSP
             //build cityIndices list. Stupid but need it
             List<int> cityIndices = initCityIndices();
 
+            //Build the q with the initial searchSpace having {0} as it's current route
             PriorityQ q = new PriorityQ();
             q.Makequeue();
             q.Insert(new SearchSpace(new List<int>(), cityIndices, 0, graphMatrix, 0, _size));
+            statesCreated++;
 
+            //Branch and bound
             while(q.NotEmpty() && timer.ElapsedMilliseconds < 60 * 1000)
             {
                 SearchSpace curr = q.Deletemin();
-                if(curr.Bound < costOfBssf())
-                    solutionsConsidered += explore(curr, q);
+                if (curr.Bound < costOfBssf())
+                    explore(curr, q);
+                else
+                    statesPruned++;
             }
 
             timer.Stop();
             results[COST] = costOfBssf().ToString();                          // load results array
             results[TIME] = timer.Elapsed.ToString();
-            results[COUNT] = solutionsConsidered.ToString();
+            results[COUNT] = solutionsFound.ToString();
+
+
+            statesStoredMax = q.MaxCount;
+            statesPruned += q.Count;
 
             return results;
         }
         
-        //returns number of leaves reached during the exploration
-        private int explore(SearchSpace current, PriorityQ q)
+        //returns number of updates to BSSF made during the exploration
+        private void explore(SearchSpace current, PriorityQ q)
         {
-            int leavesFound = 0;
             List<int> citiesRemaining = current.CitiesRemaining;
             bool leaf = true;
             foreach (int city in citiesRemaining)
             {
                 leaf = false;
                 SearchSpace child = new SearchSpace(current, city);
+                statesCreated++;
                 if (child.Bound < costOfBssf())
                     q.Insert(child);
+                else
+                    statesPruned++;
             }
 
             if(leaf)
             {
-                leavesFound++;
                 TSPSolution possibleSoln = new TSPSolution(current.Route, Cities);
                 if (possibleSoln.costOfRoute() < costOfBssf())
                 {
                     bssf = possibleSoln;
+                    solutionsFound++;
                 }
             }
-
-            return leavesFound;
+            
         }
 
         private double[,] buildGraphMatrix()

@@ -6,38 +6,33 @@ using System.Threading.Tasks;
 
 namespace TSP
 {
-    //TODO THIS WHOLE THING IS NOT DONE AND I SHOULD PROBABLY JUST START OVER FROM MY NETWORKROUTER PRIORITYQ CODE
-    //I think you forget about the distance array. Just need to change what a key is (make it depth remaining in tree)
-
-
-        //YOU ARE HERE. NEED TO IMPLEMENT PRIORITY Q. KEY SHOULD BE DEPTH REMAINING. IF THERE'S A TIE, GO WITH THE LOWEST LOWERBOUND
-
     class PriorityQ
     {
         private List<SearchSpace> q;
-        //private List<int> QindexOf;
+        private int maxCount; //for analysis only, does not affect functionality
 
         //O(1)
         public void Makequeue()
         {
-            //QindexOf = new List<int>();
             q = new List<SearchSpace>();
             q.Add(null); //Have the first item in the array be garbage so that it's 1-indexed
+            maxCount = 0; 
         }
 
         //O(log|V|) from BubbleUp. Other ops are O(1)
         public void Insert(SearchSpace v)
         {
-            //QindexOf.Add(q.Count);
             q.Add(v);
             BubbleUp(v);
+            if (Count > maxCount)
+                maxCount = Count;
         }
 
         //O(log|V|) - I use a look up array for the Q-index, so that's O(1). 
         //There can be at most log|V| swaps (height of tree), and each swap does only O(1) ops.
         private void BubbleUp(SearchSpace v)
         {
-            int Qi = q.IndexOf(v); //QindexOf[v]; //O(1)
+            int Qi = q.IndexOf(v);
             int parentQi = Qi / 2;
 
             //swap represents if the child has higher priority than the parent
@@ -48,7 +43,6 @@ namespace TSP
             while (swap) //while not at root and while parent's key is lower priority than inserted node's key
             {
                 q[Qi] = q[parentQi]; //put parent in child's place
-                //QindexOf[q[Qi]] = Qi; //update QindexOf parent to be child's old index
                 Qi = parentQi; //increment current to parent's position
                 parentQi = Qi / 2; //find parent of current's new position
                 swap = (Qi == 1) ? false 
@@ -56,7 +50,6 @@ namespace TSP
                     : q[parentQi].DepthRemaining > v.DepthRemaining;
             }
             q[Qi] = v; //put v in it's appropriate position
-            //QindexOf[v] = Qi; //update QindexOf the bubbledUp node
         }
 
         //O(log|V|) - O(1) ops except for siftdown function. 
@@ -74,7 +67,7 @@ namespace TSP
                 int currQi = 1;
 
                 //sift the root down:
-                int childQi = SmallestChildQi(currQi);
+                int childQi = HighestPriorityChildQi(currQi);
                 bool swap = (childQi == 0) ? false 
                     : (q[childQi].DepthRemaining == lastV.DepthRemaining) ? q[childQi].Bound < lastV.Bound 
                     : q[childQi].DepthRemaining < lastV.DepthRemaining;
@@ -82,25 +75,22 @@ namespace TSP
                                              //the distance of the smallest child < the distance of the previously last node
                 {
                     q[currQi] = q[childQi]; //put smallest child at current position
-                    //QindexOf[q[currQi]] = currQi; //update QindexOf child to be parent's old index
                     currQi = childQi; //set current = smallest child
-                    childQi = SmallestChildQi(currQi); //get new smallest child
+                    childQi = HighestPriorityChildQi(currQi); //get new smallest child
                     swap = (childQi == 0) ? false
                         : (q[childQi].DepthRemaining == lastV.DepthRemaining) ? q[childQi].Bound < lastV.Bound
                         : q[childQi].DepthRemaining < lastV.DepthRemaining;
                 }
 
                 q[currQi] = lastV; //put lastV in it's appropriate position
-                //QindexOf[lastV] = currQi;
             }
             //********** end siftdown ************//
-            //QindexOf[v] = -1;
 
             return v;
         }
 
         //O(1) - all O(1) lookups or arithmetic done one time.
-        private int SmallestChildQi(int parentQi)
+        private int HighestPriorityChildQi(int parentQi)
         {
             //Left child = parent index * 2 
             //Right child = left child + 1
@@ -110,8 +100,17 @@ namespace TSP
                 return 0; //no children
             else if (c2Qi >= q.Count)
                 return c1Qi; //only child
-            else
-                return (q[c1Qi].DepthRemaining < q[c2Qi].DepthRemaining) ? c1Qi : c2Qi; //smallest child
+            else //return highest priority child
+            {
+                if (q[c1Qi].DepthRemaining == q[c2Qi].DepthRemaining)
+                {
+                    return (q[c1Qi].Bound < q[c2Qi].Bound) ? c1Qi : c2Qi;
+                }
+                else
+                {
+                    return (q[c1Qi].DepthRemaining < q[c2Qi].DepthRemaining) ? c1Qi : c2Qi; 
+                }
+            }
         }
 
         //O(log|V|) - just calls BubbleUp
@@ -126,10 +125,14 @@ namespace TSP
             return q.Count > 1; //q[0] is garbage, so q empty when 1 element in it
         }
 
-        //Removes all SearchSpaces with a LB >= newBSSF. By remove, I mean make null
-        public void Trim(double newBSSF)
+        public int Count
         {
+            get { return q.Count - 1; } //-1 for the gargabe at q[0]. Need count for calculating statesPruned in B&B
+        }
 
+        public int MaxCount
+        {
+            get { return maxCount; }
         }
     }
     
