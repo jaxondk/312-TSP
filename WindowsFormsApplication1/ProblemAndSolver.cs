@@ -429,18 +429,19 @@ namespace TSP
             defaultGetBSSF(); //replace with greedy or however you want to initialize BSSF
 
             //build cityIndices list. Stupid but need it
-            List<int> cityIndices = initCityIndices();
+            List<int> cityIndices = initCityIndices(); //O(n)
 
             //Build the q with the initial searchSpace having {0} as it's current route
             PriorityQ q = new PriorityQ();
-            q.Makequeue();
-            q.Insert(new SearchSpace(new List<int>(), cityIndices, 0, graphMatrix, 0, _size));
+            q.Makequeue(); //O(1)
+            q.Insert(new SearchSpace(new List<int>(), cityIndices, 0, graphMatrix, 0, _size));  //O(log|V|)
             statesCreated++;
 
-            //Branch and bound
-            while(q.NotEmpty() && timer.ElapsedMilliseconds < 60 * 1000)
+            //Branch and bound. 
+            //O(n^2n!)
+            while(q.NotEmpty() && timer.ElapsedMilliseconds < 60 * 1000) //could run O(n!) times
             {
-                SearchSpace curr = q.Deletemin();
+                SearchSpace curr = q.Deletemin(); //O(log|V|)
                 if (curr.Bound < costOfBssf())
                     explore(curr, q);
                 else
@@ -464,10 +465,11 @@ namespace TSP
         {
             List<int> citiesRemaining = current.CitiesRemaining;
             bool leaf = true;
+            //O()
             foreach (int city in citiesRemaining)
             {
                 leaf = false;
-                SearchSpace child = new SearchSpace(current, city);
+                SearchSpace child = new SearchSpace(current, city);//O(n^2)
                 statesCreated++;
                 if (child.Bound < costOfBssf())
                     q.Insert(child);
@@ -540,6 +542,7 @@ namespace TSP
             return results;
         }
 
+        //TODO - BROKEN/INCORRECT
         //returns number of solutions considered
         private int greedyCalcBSSF()
         {

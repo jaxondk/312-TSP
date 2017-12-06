@@ -36,6 +36,7 @@ namespace TSP
         { }
 
         //Reduces the given matrix and sets the lowerbound
+        //O(n^2)
         private void reduceMatrix(double[,] prevMatrix, int cityVisiting)
         {
             //perform deep copy of prevMatrix before editing
